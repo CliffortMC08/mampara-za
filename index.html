@@ -49,29 +49,108 @@ const DATA_URL =
 function App() {
     const [data, setData] = useState({});
     const [selectedYear, setSelectedYear] = useState(2026);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
 
     useEffect(() => {
         fetch(DATA_URL)
-            .then(res => {
-                if (!res.ok) throw new Error('Could not load Mampara moments');
-                return res.json();
-            })
-            .then(json => {
-                setData(json);
-                setLoading(false);
-            })
-            .catch(err => {
-                setError(err.message);
-                setLoading(false);
-            });
+            .then(res => res.json())
+            .then(setData);
     }, []);
 
     const getMonthVideos = (month) =>
         (data[selectedYear]?.[month]) || [];
 
-    /* DOWNLOAD FULL PAGE */
+    /* FULL PAGE DOWNLOAD — GUARANTEED */
     const downloadPageAsImage = async () => {
-        const element = document.getElementById('capture-page');
-        if (
+        const body = document.body;
+
+        /* Store original styles */
+        const originalOverflow = body.style.overflow;
+        const stickyEls = document.querySelectorAll('.sticky');
+
+        /* Disable sticky & scrolling */
+        body.style.overflow = 'visible';
+        stickyEls.forEach(el => el.style.position = 'static');
+
+        await new Promise(r => setTimeout(r, 300)); // allow layout reflow
+
+        const canvas = await html2canvas(body, {
+            scale: 2,
+            useCORS: true,
+            backgroundColor: '#f3f4f6',
+            height: body.scrollHeight,
+            width: body.scrollWidth,
+            windowHeight: body.scrollHeight
+        });
+
+        /* Restore styles */
+        body.style.overflow = originalOverflow;
+        stickyEls.forEach(el => el.style.position = 'sticky');
+
+        const link = document.createElement('a');
+        link.download = `Mampara_ZA_${selectedYear}_FULL_PAGE.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+    };
+
+    return (
+        <div className="min-h-screen pb-20">
+
+            <header className="bg-black text-white py-10">
+                <div className="container mx-auto px-6 text-center">
+                    <h1 className="text-6xl font-black text-yellow-400">
+                        Mampara ZA
+                    </h1>
+                    <p className="mt-3 text-xl text-green-300">
+                        South Africa's Viral Hall of Fame 🇿🇦
+                    </p>
+                </div>
+            </header>
+
+            <div className="bg-white sticky top-0 z-50 shadow-md">
+                <div className="container mx-auto flex justify-center gap-4 py-5 px-6">
+                    {yearsList.map(year => (
+                        <button key={year}
+                            onClick={() => setSelectedYear(year)}
+                            className={`px-8 py-3 rounded-full font-bold ${
+                                selectedYear === year
+                                    ? 'bg-green-600 text-white'
+                                    : 'bg-gray-200'
+                            }`}>
+                            {year}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            <div className="container mx-auto px-6 py-6 flex justify-center">
+                <button
+                    onClick={downloadPageAsImage}
+                    className="px-8 py-3 rounded-full bg-black text-yellow-400 font-bold">
+                    Download Full Page 📸
+                </button>
+            </div>
+
+            <div className="container mx-auto px-6 py-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
+                {monthsList.map(month => (
+                    <div key={month} className="bg-white rounded-3xl shadow-xl">
+                        <div className="bg-gradient-to-r from-green-600 via-yellow-400 to-black text-white px-6 py-4">
+                            <h3 className="text-2xl font-bold">{month} {selectedYear}</h3>
+                        </div>
+                        <div className="p-6 grid grid-cols-3 gap-4">
+                            {getMonthVideos(month).map((v, i) => (
+                                <img key={i} src={v.thumbnail}
+                                     className="rounded-xl object-cover"/>
+                            ))}
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+        </div>
+    );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
